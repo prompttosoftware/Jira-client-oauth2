@@ -5,7 +5,8 @@
     "rootDir": "src",
     "declaration": true,
     "emitDeclarationOnly": true,
-    "declarationMap": true
+    "declarationMap": true,
+    "rewriteRelativeImportExtensions": true
   },
   "include": [
     "src/**/*"
