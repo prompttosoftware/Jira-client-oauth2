@@ -1,7 +1,9 @@
 import JiraOAuth2Client from './JiraOAuth2Client';
 
-export * from './types';
-
-export { type Logger } from './util/logger';
+export {
+  JiraApiError,
+  type JiraOAuth2Config,
+  type Logger,
+} from './types';
 
 export default JiraOAuth2Client;

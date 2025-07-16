@@ -1,6 +1,15 @@
 // ========= INTERFACES =========
 
-import { Logger } from "./util/logger";
+/**
+ * Defines the interface for a logger that can be used by the client.
+ * Consumers of the library can provide their own implementation of this interface.
+ */
+export interface Logger {
+  info(message: string, ...meta: any[]): void;
+  warn(message: string, ...meta: any[]): void;
+  error(message: string, ...meta: any[]): void;
+  debug(message: string, ...meta: any[]): void;
+}
 
 export interface JiraOAuth2Config {
   cloudId: string;
