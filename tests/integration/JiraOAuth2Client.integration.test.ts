@@ -2,7 +2,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import fs from 'fs';
 import path from 'path';
-import { JiraOAuth2Client } from '../../src/JiraOAuth2Client';
+import JiraOAuth2Client from '../../src/JiraOAuth2Client';
 
 // Use a shared client instance across both test suites
 let client: JiraOAuth2Client;
