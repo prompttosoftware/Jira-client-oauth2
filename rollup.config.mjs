@@ -27,7 +27,7 @@ export default [
     output: {
       file: 'dist/cjs/index.js',
       format: 'cjs',
-      exports: 'named',
+      exports: 'auto',
       sourcemap: true
     },
     external,
