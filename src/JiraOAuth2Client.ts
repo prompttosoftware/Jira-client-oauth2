@@ -4,7 +4,7 @@ import FormData from 'form-data';
 import fs from 'fs';
 import path from 'path';
 import { JiraOAuth2Config, JiraApiError, CreateIssueRequest, CreateIssueResponse, JiraIssue, JiraSearchResponse, IssueLinkRequest, JiraProject, PaginatedResponse, JiraBoard, JiraUser } from './types';
-import { Logger, silentLogger } from '../util/logger';
+import { Logger, silentLogger } from './util/logger';
 
 // ========= JIRA CLIENT CLASS =========
 

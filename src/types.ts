@@ -1,6 +1,6 @@
 // ========= INTERFACES =========
 
-import { Logger } from "../util/logger";
+import { Logger } from "./util/logger";
 
 export interface JiraOAuth2Config {
   cloudId: string;
