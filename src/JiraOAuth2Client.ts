@@ -8,7 +8,7 @@ import { Logger, silentLogger } from './util/logger';
 
 // ========= JIRA CLIENT CLASS =========
 
-export class JiraOAuth2Client {
+export default class JiraOAuth2Client {
   private jiraClient: AxiosInstance;
   private agileClient: AxiosInstance;
   private atlassianClient: AxiosInstance;
