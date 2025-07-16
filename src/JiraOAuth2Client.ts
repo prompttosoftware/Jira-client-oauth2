@@ -3,8 +3,8 @@ import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
 import FormData from 'form-data';
 import fs from 'fs';
 import path from 'path';
-import { logger } from '../util/logger';
 import { JiraOAuth2Config, JiraApiError, CreateIssueRequest, CreateIssueResponse, JiraIssue, JiraSearchResponse, IssueLinkRequest, JiraProject, PaginatedResponse, JiraBoard, JiraUser } from './types';
+import { Logger, silentLogger } from '../util/logger';
 
 // ========= JIRA CLIENT CLASS =========
 
@@ -12,10 +12,12 @@ export class JiraOAuth2Client {
   private jiraClient: AxiosInstance;
   private agileClient: AxiosInstance;
   private atlassianClient: AxiosInstance;
+  private logger: Logger;
 
   constructor(config: JiraOAuth2Config) {
     const { accessToken, cloudId, apiVersion = '3' } = config;
     const baseUrl = `https://api.atlassian.com/ex/jira/${cloudId}`;
+    this.logger = config.logger || silentLogger;
 
     // Helper to create a configured client with shared logic
     const createClient = (baseURL: string) => {
@@ -32,22 +34,22 @@ export class JiraOAuth2Client {
       // Add interceptors for logging
       client.interceptors.request.use(
         (req) => {
-          logger.info(`Jira API Request: ${req.method?.toUpperCase()} ${req.baseURL}${req.url}`);
+          this.logger.info(`Jira API Request: ${req.method?.toUpperCase()} ${req.baseURL}${req.url}`);
           return req;
         },
         (error) => {
-          logger.error('Jira API Request Error:', error);
+          this.logger.error('Jira API Request Error:', error);
           return Promise.reject(error);
         },
       );
 
       client.interceptors.response.use(
         (res) => {
-          logger.info(`Jira API Response: ${res.status} ${res.config.baseURL}${res.config.url}`);
+          this.logger.info(`Jira API Response: ${res.status} ${res.config.baseURL}${res.config.url}`);
           return res;
         },
         (error) => {
-          logger.error('Jira API Response Error: ', {
+          this.logger.error('Jira API Response Error: ', {
             status: error.response?.status,
             data: error.response?.data,
             url: `${error.config?.baseURL}${error.config?.url}`,
@@ -73,7 +75,7 @@ export class JiraOAuth2Client {
     this.jiraClient.defaults.headers.common['Authorization'] = authHeader;
     this.agileClient.defaults.headers.common['Authorization'] = authHeader;
     this.atlassianClient.defaults.headers.common['Authorization'] = authHeader;
-    logger.info('Jira client access token has been updated.');
+    this.logger.info('Jira client access token has been updated.');
   }
 
   /**

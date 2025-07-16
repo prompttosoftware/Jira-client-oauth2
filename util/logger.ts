@@ -1,8 +1,8 @@
 // src/utils/logger.ts
 
 /**
- * Defines the interface for our logger.
- * This allows for easy swapping of logging implementations.
+ * Defines the interface for a logger that can be used by the client.
+ * Consumers of the library can provide their own implementation of this interface.
  */
 export interface Logger {
   info(message: string, ...meta: any[]): void;
@@ -12,45 +12,18 @@ export interface Logger {
 }
 
 /**
- * A simple console-based logger implementation.
- * You can extend or replace this with more sophisticated logging libraries (e.g., Winston, Pino).
+ * A logger that does nothing. This is the default logger for the client,
+ * ensuring the library is silent unless a consumer provides their own logger.
  */
-class ConsoleLogger implements Logger {
-  private getTimestamp(): string {
-    return new Date().toISOString();
-  }
-
-  info(message: string, ...meta: any[]): void {
-    console.log(`[${this.getTimestamp()}] [INFO] ${message}`, ...meta);
-  }
-
-  warn(message: string, ...meta: any[]): void {
-    console.warn(`[${this.getTimestamp()}] [WARN] ${message}`, ...meta);
-  }
-
-  error(message: string, ...meta: any[]): void {
-    console.error(`[${this.getTimestamp()}] [ERROR] ${message}`, ...meta);
-  }
-
-  debug(message: string, ...meta: any[]): void {
-    // Only log debug messages if a debug environment variable is set
-    if (process.env.NODE_ENV === 'development' || process.env.DEBUG_MODE === 'true') {
-      console.debug(`[${this.getTimestamp()}] [DEBUG] ${message}`, ...meta);
-    }
-  }
+class NoOpLogger implements Logger {
+  info() { /* do nothing */ }
+  warn() { /* do nothing */ }
+  error() { /* do nothing */ }
+  debug() { /* do nothing */ }
 }
 
 /**
- * The default logger instance to be used throughout the application.
- * You can set this to a different logger implementation if needed.
+ * An instance of the NoOpLogger to be used as the default.
+ * This is not exported, it's an internal detail.
  */
-export const logger: Logger = new ConsoleLogger();
-
-/**
- * Optional: Function to set a custom logger.
- * This is useful for testing or integrating with external logging systems.
- * @param customLogger The logger instance to use.
- */
-export function setLogger(customLogger: Logger): void {
-  (module.exports as any).logger = customLogger; // Directly update the exported logger
-}
+export const silentLogger: Logger = new NoOpLogger();

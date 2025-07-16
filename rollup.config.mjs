@@ -5,11 +5,19 @@ import { nodeResolve } from '@rollup/plugin-node-resolve';
 import commonjs from '@rollup/plugin-commonjs';
 import pkg from './package.json' with { type: 'json' };
 
-// Automatically determine external dependencies
 const external = [
   ...Object.keys(pkg.dependencies || {}),
   ...Object.keys(pkg.peerDependencies || {}),
-  /^node:.*/, // Handles all node built-ins like 'node:fs', 'node:path'
+  /^node:.*/,
+];
+
+const plugins = [
+  typescript({
+    tsconfig: './tsconfig.json',
+    exclude: ['**/*.test.ts', '**/*.spec.ts', 'tests/**/*']
+  }),
+  nodeResolve({ preferBuiltins: true }),
+  commonjs()
 ];
 
 export default [
@@ -23,21 +31,7 @@ export default [
       sourcemap: true
     },
     external,
-    plugins: [
-      // 1. Run TypeScript plugin FIRST
-      typescript({
-        tsconfig: './tsconfig.json',
-        declaration: false,
-        declarationMap: false,
-        exclude: ['**/*.test.ts', '**/*.spec.ts', 'tests/**/*']
-      }),
-      // 2. Resolve node modules
-      nodeResolve({
-        preferBuiltins: true,
-      }),
-      // 3. Convert CommonJS to ES modules
-      commonjs()
-    ]
+    plugins
   },
   // ES Module build
   {
@@ -48,17 +42,6 @@ export default [
       sourcemap: true
     },
     external,
-    plugins: [
-      typescript({
-        tsconfig: './tsconfig.json',
-        declaration: false,
-        declarationMap: false,
-        exclude: ['**/*.test.ts', '**/*.spec.ts', 'tests/**/*']
-      }),
-      nodeResolve({
-        preferBuiltins: true,
-      }),
-      commonjs()
-    ]
+    plugins
   }
 ];

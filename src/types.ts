@@ -1,9 +1,12 @@
 // ========= INTERFACES =========
 
+import { Logger } from "../util/logger";
+
 export interface JiraOAuth2Config {
   cloudId: string;
   accessToken: string;
   apiVersion?: '2' | '3'; // Jira Cloud API version
+  logger?: Logger;
 }
 
 // --- Entity Interfaces ---
