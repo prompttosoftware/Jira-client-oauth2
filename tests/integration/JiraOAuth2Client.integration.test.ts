@@ -6,11 +6,11 @@ import JiraOAuth2Client from '../../src/JiraOAuth2Client';
 
 // Use a shared client instance across both test suites
 let client: JiraOAuth2Client;
-const { JIRA_CLOUD_ID, JIRA_OAUTH_ACCESS_TOKEN, JIRA_TEST_PROJECT_KEY } = process.env;
+const { JIRA_CLOUD_ID, JIRA_OAUTH_ACCESS_TOKEN, JIRA_TEST_PROJECT_KEY, JIRA_TEST_BOARD_ID } = process.env;
 
 // This will run once before all tests in this file
 beforeAll(() => {
-  if (!JIRA_CLOUD_ID || !JIRA_OAUTH_ACCESS_TOKEN || !JIRA_TEST_PROJECT_KEY) {
+  if (!JIRA_CLOUD_ID || !JIRA_OAUTH_ACCESS_TOKEN || !JIRA_TEST_PROJECT_KEY || !JIRA_TEST_BOARD_ID) {
     throw new Error('Missing required environment variables for Jira integration tests. Did globalSetup run correctly?');
   }
 
@@ -130,7 +130,7 @@ describe.sequential('JiraOAuth2Client - Issue Lifecycle Integration Tests', () =
     console.log(`Linked ${createdIssueKey} and ${secondIssue.key}`);
 
     // 3. Verify the link exists
-    const issueWithLinks = await client.getIssue(createdIssueKey, ['issuelinks']);
+    const issueWithLinks = await client.getIssue(createdIssueKey, {expand: ['issuelinks']});
     expect(issueWithLinks.fields.issuelinks).toBeDefined();
     expect(issueWithLinks.fields.issuelinks.length).toBeGreaterThan(0);
     const link = issueWithLinks.fields.issuelinks.find(l => l.outwardIssue?.key === secondIssue.key);
@@ -187,7 +187,7 @@ describe('JiraOAuth2Client - Independent Integration Tests', () => {
 
   it('should retrieve epics for the test project', async () => {
     // This test assumes the project might have epics. An empty array is a valid result.
-    const epics = await client.getEpics(JIRA_TEST_PROJECT_KEY!);
+    const epics = await client.getEpics(Number.parseInt(JIRA_TEST_BOARD_ID!));
     expect(epics).toBeDefined();
     expect(Array.isArray(epics)).toBe(true);
     console.log(`Found ${epics.length} epics in project ${JIRA_TEST_PROJECT_KEY}.`);

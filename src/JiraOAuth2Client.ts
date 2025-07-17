@@ -127,12 +127,16 @@ export default class JiraOAuth2Client {
     return this.makeRequest<JiraIssue>(this.jiraClient, 'POST', '/issue', issueData);
   }
 
-  /**
+    /**
    * Retrieves an issue by its key.
    * (Previously findIssue)
    */
-  async getIssue(issueKey: string, expand?: string[]): Promise<JiraIssue> {
-    const params = expand ? { expand: expand.join(',') } : {};
+  async getIssue(issueKey: string, options: { expand?: string[]; fields?: string[] } = {}): Promise<JiraIssue> {
+    const { expand, fields } = options;
+    const params: any = {};
+    if (expand) params.expand = expand.join(',');
+    if (fields) params.fields = fields.join(',');
+    
     return this.makeRequest<JiraIssue>(this.jiraClient, 'GET', `/issue/${issueKey}`, undefined, { params });
   }
 
@@ -169,12 +173,33 @@ export default class JiraOAuth2Client {
   }
   
   /**
-   * Searches for all Epics in a given project.
+   * Searches for all Epics for a given board.
    */
-  async getEpics(projectKey: string): Promise<JiraIssue[]> {
-    const jql = `project = "${projectKey}" AND issuetype = Epic`;
-    const result = await this.searchIssues(jql, { maxResults: 1000 });
-    return result.issues;
+  async getEpics(boardId: number): Promise<JiraIssue[]> {
+    const allEpics: JiraIssue[] = [];
+    let startAt = 0;
+    let isLast = false;
+    
+    while (!isLast) {
+      const page = await this.makeRequest<PaginatedResponse<JiraIssue>>(
+          this.agileClient,
+          'GET', 
+          `/board/${boardId}/epic`, 
+          undefined, 
+          { params: { startAt } }
+      );
+      
+      if (page.values && page.values.length > 0) {
+        allEpics.push(...page.values);
+      }
+      
+      isLast = page.isLast ?? true;
+      if (!isLast) {
+        startAt = page.startAt + page.maxResults;
+      }
+    }
+    
+    return allEpics;
   }
 
   /**
@@ -241,6 +266,13 @@ export default class JiraOAuth2Client {
   async getProjects(): Promise<JiraProject[]> {
     return this.makeRequest<JiraProject[]>(this.jiraClient, 'GET', '/project/search');
   }
+
+  /**
+   * Retrieves a single project by its key or ID.
+   */
+  async getProject(projectKeyOrId: string): Promise<JiraProject> {
+    return this.makeRequest<JiraProject>(this.jiraClient, 'GET', `/project/${projectKeyOrId}`);
+  }
   
   /**
    * Creates a new project. Note: Requires admin permissions.
@@ -260,18 +292,29 @@ export default class JiraOAuth2Client {
   
   // --- Agile API Methods (Boards) ---
   
-  /**
-   * Retrieves all boards, paginated.
+    /**
+   * Retrieves all boards, paginated. Can be filtered by type and project.
    */
-  async getAllBoards(startAt = 0, maxResults = 50): Promise<PaginatedResponse<JiraBoard>> {
-    return this.makeRequest<PaginatedResponse<JiraBoard>>(this.agileClient, 'GET', '/board', undefined, { params: { startAt, maxResults } });
+  async getAllBoards(options: { startAt?: number; maxResults?: number; type?: 'scrum' | 'kanban'; projectKeyOrId?: string } = {}): Promise<PaginatedResponse<JiraBoard>> {
+    return this.makeRequest<PaginatedResponse<JiraBoard>>(this.agileClient, 'GET', '/board', undefined, { params: options });
   }
   
   /**
    * Retrieves issues for a specific board, paginated.
+   * Allows filtering by JQL and specifying which fields to return.
    */
-  async getIssuesForBoard(boardId: number, options: { startAt?: number; maxResults?: number; jql?: string } = {}): Promise<JiraSearchResponse> {
-    return this.makeRequest<JiraSearchResponse>(this.agileClient, 'GET', `/board/${boardId}/issue`, undefined, { params: options });
+  async getIssuesForBoard(
+    boardId: number,
+    options: { startAt?: number; maxResults?: number; jql?: string; fields?: string[] } = {},
+  ): Promise<JiraSearchResponse> {
+    const { fields, ...otherOptions } = options;
+    const params: any = { ...otherOptions };
+
+    if (fields) {
+      params.fields = fields.join(',');
+    }
+
+    return this.makeRequest<JiraSearchResponse>(this.agileClient, 'GET', `/board/${boardId}/issue`, undefined, { params });
   }
 
   // --- User-related Methods ---
