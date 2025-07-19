@@ -1,8 +1,7 @@
 // tests/integration/JiraOAuth2Client.integration.test.ts
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import fs from 'fs';
-import path from 'path';
 import JiraOAuth2Client from '../../src/JiraOAuth2Client';
+import { ConsoleLogger } from './jira/ConsoleLogger';
 
 // Use a shared client instance across both test suites
 let client: JiraOAuth2Client;
@@ -18,9 +17,9 @@ beforeAll(() => {
     cloudId: JIRA_CLOUD_ID,
     accessToken: JIRA_OAUTH_ACCESS_TOKEN,
     apiVersion: '3',
+    logger: new ConsoleLogger()
   });
 });
-
 
 // === SUITE 1: Sequential Issue Lifecycle Tests ===
 // These tests depend on each other and must run in order to test the full lifecycle of an issue.
@@ -138,19 +137,6 @@ describe.sequential('JiraOAuth2Client - Issue Lifecycle Integration Tests', () =
     expect(link.type.name).toBe('Relates');
     console.log('Successfully verified issue link.');
   });
-
-  it('should add an attachment to the issue', async () => {
-    const filePath = path.join(__dirname, 'test-attachment.txt');
-    fs.writeFileSync(filePath, 'This is a test attachment file.');
-
-    const response = await client.addAttachment(createdIssueKey, filePath);
-    fs.unlinkSync(filePath); // Clean up file
-
-    expect(response).toBeDefined();
-    expect(Array.isArray(response)).toBe(true);
-    expect(response[0].filename).toBe('test-attachment.txt');
-    console.log(`Added attachment "${response[0].filename}" to ${createdIssueKey}`);
-  });
   
   it('should transition the issue (if workflow allows)', async () => {
     const transitions = await client.getTransitions(createdIssueKey);
@@ -187,7 +173,7 @@ describe('JiraOAuth2Client - Independent Integration Tests', () => {
 
   it('should retrieve epics for the test project', async () => {
     // This test assumes the project might have epics. An empty array is a valid result.
-    const epics = await client.getEpics(Number.parseInt(JIRA_TEST_BOARD_ID!));
+    const epics = await client.getEpics(JIRA_TEST_PROJECT_KEY!);
     expect(epics).toBeDefined();
     expect(Array.isArray(epics)).toBe(true);
     console.log(`Found ${epics.length} epics in project ${JIRA_TEST_PROJECT_KEY}.`);
@@ -195,41 +181,11 @@ describe('JiraOAuth2Client - Independent Integration Tests', () => {
 
   it('should retrieve all visible projects', async () => {
     const projects = await client.getProjects();
+    console.log(JSON.stringify(projects, null, 2));
     expect(Array.isArray(projects)).toBe(true);
     expect(projects.length).toBeGreaterThan(0);
     const testProject = projects.find(p => p.key === JIRA_TEST_PROJECT_KEY);
     expect(testProject).toBeDefined();
     console.log(`Found test project "${testProject!.name}" (${testProject!.key}) among ${projects.length} total projects.`);
-  });
-  
-  it('should retrieve project schemes', async () => {
-    const issueTypeScheme = await client.getIssueTypeScheme(JIRA_TEST_PROJECT_KEY!);
-    expect(issueTypeScheme).toBeDefined();
-    expect(issueTypeScheme.name).toBeTypeOf('string');
-
-    const workflowScheme = await client.getWorkflowScheme(JIRA_TEST_PROJECT_KEY!);
-    expect(workflowScheme).toBeDefined();
-    expect(workflowScheme.name).toBeTypeOf('string');
-
-    console.log(`Retrieved schemes for project ${JIRA_TEST_PROJECT_KEY}.`);
-  });
-
-  it('should retrieve all agile boards', async () => {
-    const boardsResponse = await client.getAllBoards();
-    expect(boardsResponse).toBeDefined();
-    expect(Array.isArray(boardsResponse.values)).toBe(true);
-    console.log(`Found ${boardsResponse.total || boardsResponse.values.length} agile boards.`);
-    
-    // If boards exist, test getting issues for the first one
-    if (boardsResponse.values.length > 0) {
-      const firstBoard = boardsResponse.values[0];
-      console.log(`Testing getIssuesForBoard on board "${firstBoard.name}" (ID: ${firstBoard.id})`);
-      const issuesForBoard = await client.getIssuesForBoard(firstBoard.id, { maxResults: 1 });
-      expect(issuesForBoard).toBeDefined();
-      expect(Array.isArray(issuesForBoard.issues)).toBe(true);
-      console.log(`Successfully retrieved issues for board ${firstBoard.id}.`);
-    } else {
-      console.warn('Skipping getIssuesForBoard test because no agile boards were found.');
-    }
   });
 });

@@ -1,9 +1,6 @@
 // src/jira_functions/oAuth2/JiraOAuth2Client.ts
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
-import FormData from 'form-data';
-import fs from 'fs';
-import path from 'path';
-import { JiraOAuth2Config, JiraApiError, CreateIssueRequest, CreateIssueResponse, JiraIssue, JiraSearchResponse, IssueLinkRequest, JiraProject, PaginatedResponse, JiraBoard, JiraUser, Logger } from './types';
+import { JiraOAuth2Config, JiraApiError, CreateIssueRequest, CreateIssueResponse, JiraIssue, JiraSearchResponse, IssueLinkRequest, JiraProject, JiraUser, Logger, JiraProjectSearchResponse, RefreshTokensResponse } from './types';
 import { silentLogger } from './util/logger';
 
 // ========= JIRA CLIENT CLASS =========
@@ -76,6 +73,27 @@ export default class JiraOAuth2Client {
     this.agileClient.defaults.headers.common['Authorization'] = authHeader;
     this.atlassianClient.defaults.headers.common['Authorization'] = authHeader;
     this.logger.info('Jira client access token has been updated.');
+  }
+
+  /** 
+   * Gets a new refresh and access token.
+  */
+  public async refreshAccessToken(clientId: string, clientSecret: string, refreshToken: string): Promise<RefreshTokensResponse> {
+    const response = await axios.post('https://auth.atlassian.com/oauth/token', {
+      grant_type: 'refresh_token',
+      client_id: clientId,
+      client_secret: clientSecret,
+      refresh_token: refreshToken,
+    });
+
+    // Destructure BOTH the new access token and the new refresh token
+    const { access_token: newAccessToken, refresh_token: newRefreshToken } = response.data;
+
+    if (!newAccessToken || !newRefreshToken) {
+      throw new Error('Failed to retrieve access token or new refresh token from response.');
+    }
+
+    return response.data;
   }
 
   /**
@@ -173,54 +191,29 @@ export default class JiraOAuth2Client {
   }
   
   /**
-   * Searches for all Epics for a given board.
+   * Searches for all Epics for a given project.
    */
-  async getEpics(boardId: number): Promise<JiraIssue[]> {
+  async getEpics(projectKey: string): Promise<JiraIssue[]> {
     const allEpics: JiraIssue[] = [];
     let startAt = 0;
     let isLast = false;
+    const MAX_RESULTS = 1000;
+    const jql = `project = "${projectKey}" AND issuetype = Epic`;
     
     while (!isLast) {
-      const page = await this.makeRequest<PaginatedResponse<JiraIssue>>(
-          this.agileClient,
-          'GET', 
-          `/board/${boardId}/epic`, 
-          undefined, 
-          { params: { startAt } }
-      );
+      const result = await this.searchIssues(jql, { maxResults: MAX_RESULTS });
       
-      if (page.values && page.values.length > 0) {
-        allEpics.push(...page.values);
+      if (result.issues && result.issues.length > 0) {
+        allEpics.push(...result.issues);
       }
       
-      isLast = page.isLast ?? true;
+      isLast = result.issues.length < MAX_RESULTS;
       if (!isLast) {
-        startAt = page.startAt + page.maxResults;
+        startAt = startAt + MAX_RESULTS;
       }
     }
     
     return allEpics;
-  }
-
-  /**
-   * Adds an attachment to an issue.
-   */
-  async addAttachment(issueKey: string, filePath: string): Promise<any> {
-    const form = new FormData();
-    form.append('file', fs.createReadStream(filePath), path.basename(filePath));
-
-    const headers = {
-      ...form.getHeaders(),
-      'X-Atlassian-Token': 'no-check',
-      'Authorization': this.jiraClient.defaults.headers.common['Authorization'],
-    };
-
-    try {
-      const response = await axios.post(`${this.jiraClient.defaults.baseURL}/issue/${issueKey}/attachments`, form, { headers });
-      return response.data;
-    } catch (error: any) {
-      throw new JiraApiError('Failed to add attachment', error.response?.status, error.response?.statusText, error.response?.data, error);
-    }
   }
   
   /**
@@ -264,7 +257,8 @@ export default class JiraOAuth2Client {
    * Retrieves all projects visible to the user.
    */
   async getProjects(): Promise<JiraProject[]> {
-    return this.makeRequest<JiraProject[]>(this.jiraClient, 'GET', '/project/search');
+    const response = await this.makeRequest<JiraProjectSearchResponse>(this.jiraClient, 'GET', '/project/search');
+    return response.values;
   }
 
   /**
@@ -281,40 +275,30 @@ export default class JiraOAuth2Client {
     return this.makeRequest<JiraProject>(this.jiraClient, 'POST', '/project', projectData);
   }
   
-  async getIssueTypeScheme(projectKey: string): Promise<any> {
-    return this.makeRequest(this.jiraClient, 'GET', `/project/${projectKey}/issuetypescheme`);
-  }
-
-  async getWorkflowScheme(projectKey: string): Promise<any> {
-    const res: any = await this.makeRequest(this.jiraClient, 'GET', `/project/${projectKey}`, undefined, { params: { expand: 'workflowScheme' } });
-    return res.workflowScheme;
-  }
-  
-  // --- Agile API Methods (Boards) ---
-  
-    /**
-   * Retrieves all boards, paginated. Can be filtered by type and project.
-   */
-  async getAllBoards(options: { startAt?: number; maxResults?: number; type?: 'scrum' | 'kanban'; projectKeyOrId?: string } = {}): Promise<PaginatedResponse<JiraBoard>> {
-    return this.makeRequest<PaginatedResponse<JiraBoard>>(this.agileClient, 'GET', '/board', undefined, { params: options });
-  }
-  
   /**
-   * Retrieves issues for a specific board, paginated.
-   * Allows filtering by JQL and specifying which fields to return.
+   * Searches for all Issues for a given project.
    */
-  async getIssuesForBoard(
-    boardId: number,
-    options: { startAt?: number; maxResults?: number; jql?: string; fields?: string[] } = {},
-  ): Promise<JiraSearchResponse> {
-    const { fields, ...otherOptions } = options;
-    const params: any = { ...otherOptions };
-
-    if (fields) {
-      params.fields = fields.join(',');
+  async getIssuesForProject(projectKey: number): Promise<JiraIssue[]> {
+    const allIssues: JiraIssue[] = [];
+    let startAt = 0;
+    let isLast = false;
+    const MAX_RESULTS = 1000;
+    const jql = `project = "${projectKey}"`;
+    
+    while (!isLast) {
+      const result = await this.searchIssues(jql, { maxResults: MAX_RESULTS });
+      
+      if (result.issues && result.issues.length > 0) {
+        allIssues.push(...result.issues);
+      }
+      
+      isLast = result.issues.length < MAX_RESULTS;
+      if (!isLast) {
+        startAt = startAt + MAX_RESULTS;
+      }
     }
-
-    return this.makeRequest<JiraSearchResponse>(this.agileClient, 'GET', `/board/${boardId}/issue`, undefined, { params });
+    
+    return allIssues;
   }
 
   // --- User-related Methods ---

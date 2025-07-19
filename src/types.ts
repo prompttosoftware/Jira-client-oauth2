@@ -38,6 +38,20 @@ export interface JiraProject {
   // ... other project fields
 }
 
+export interface RefreshTokensResponse {
+  access_token: string;
+  refresh_token: string;
+}
+
+export type JiraProjectSearchResponse = {
+  values: JiraProject[];
+  self: string;
+  maxResults: number;
+  startAt: number;
+  total: number;
+  isLast: boolean;
+};
+
 export interface JiraIssue {
   id: string;
   key: string;
@@ -58,6 +72,11 @@ export interface CreateIssueResponse {
     id: string;
     key: string;
     self: string;
+}
+
+export interface RefreshTokensResponse {
+    refreshToken: string;
+    accessToken: string;
 }
 
 export interface JiraIssueType {
