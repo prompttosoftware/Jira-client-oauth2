@@ -1,6 +1,6 @@
 // src/jira_functions/oAuth2/JiraOAuth2Client.ts
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
-import { JiraOAuth2Config, JiraApiError, CreateIssueRequest, CreateIssueResponse, JiraIssue, JiraSearchResponse, IssueLinkRequest, JiraProject, JiraUser, Logger, JiraProjectSearchResponse, RefreshTokensResponse } from './types';
+import { JiraOAuth2Config, JiraApiError, CreateIssueRequest, CreateIssueResponse, JiraIssue, JiraSearchResponse, IssueLinkRequest, JiraProject, JiraUser, Logger, JiraProjectSearchResponse, RefreshTokensResponse, GetIssuesOptions } from './types';
 import { silentLogger } from './util/logger';
 
 // ========= JIRA CLIENT CLASS =========
@@ -274,27 +274,69 @@ export default class JiraOAuth2Client {
   async createProject(projectData: Record<string, any>): Promise<JiraProject> {
     return this.makeRequest<JiraProject>(this.jiraClient, 'POST', '/project', projectData);
   }
-  
+
   /**
    * Searches for all Issues for a given project.
    */
-  async getIssuesForProject(projectKey: number): Promise<JiraIssue[]> {
-    const allIssues: JiraIssue[] = [];
-    let startAt = 0;
-    let isLast = false;
-    const MAX_RESULTS = 1000;
-    const jql = `project = "${projectKey}"`;
+  async getIssuesForProject(
+    projectKey: number, 
+    options: GetIssuesOptions = {}
+  ): Promise<JiraIssue[]> {
+    const { 
+      startAt: initialStartAt = 0, 
+      maxResults: userMaxResults, 
+      fields,
+      jql: additionalJql 
+    } = options;
     
-    while (!isLast) {
-      const result = await this.searchIssues(jql, { maxResults: MAX_RESULTS });
+    const allIssues: JiraIssue[] = [];
+    let startAt = initialStartAt;
+    let isLast = false;
+    const MAX_RESULTS = userMaxResults || 1000;
+    
+    // Build JQL query - combine project filter with additional JQL if provided
+    let jql = `project = "${projectKey}"`;
+    if (additionalJql) {
+      jql = `${jql} AND (${additionalJql})`;
+    }
+    
+    // If user specified maxResults, we only fetch that many results total
+    const shouldFetchAll = !userMaxResults;
+    let remainingResults = userMaxResults || Infinity;
+    
+    while (!isLast && remainingResults > 0) {
+      const currentMaxResults = shouldFetchAll 
+        ? MAX_RESULTS 
+        : Math.min(MAX_RESULTS, remainingResults);
+        
+      const searchOptions: any = { 
+        startAt, 
+        maxResults: currentMaxResults 
+      };
+      
+      if (fields && fields.length > 0) {
+        searchOptions.fields = fields;
+      }
+      
+      const result = await this.searchIssues(jql, searchOptions);
       
       if (result.issues && result.issues.length > 0) {
         allIssues.push(...result.issues);
       }
       
-      isLast = result.issues.length < MAX_RESULTS;
-      if (!isLast) {
-        startAt = startAt + MAX_RESULTS;
+      if (shouldFetchAll) {
+        // Original behavior - fetch all results
+        isLast = result.issues.length < currentMaxResults;
+        if (!isLast) {
+          startAt = startAt + currentMaxResults;
+        }
+      } else {
+        // User specified maxResults - respect the limit
+        remainingResults -= result.issues.length;
+        isLast = result.issues.length < currentMaxResults || remainingResults <= 0;
+        if (!isLast && remainingResults > 0) {
+          startAt = startAt + currentMaxResults;
+        }
       }
     }
     

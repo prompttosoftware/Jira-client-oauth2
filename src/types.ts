@@ -43,6 +43,13 @@ export interface RefreshTokensResponse {
   refresh_token: string;
 }
 
+export interface GetIssuesOptions {
+    startAt?: number;
+    maxResults?: number;
+    fields?: string[];
+    jql?: string;
+}
+
 export type JiraProjectSearchResponse = {
   values: JiraProject[];
   self: string;
