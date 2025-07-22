@@ -279,7 +279,7 @@ export default class JiraOAuth2Client {
    * Searches for all Issues for a given project.
    */
   async getIssuesForProject(
-    projectKey: number, 
+    projectKey: string, 
     options: GetIssuesOptions = {}
   ): Promise<JiraIssue[]> {
     const { 
