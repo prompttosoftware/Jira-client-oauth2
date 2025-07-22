@@ -1,4 +1,4 @@
-import { Logger } from "../../../src/types";
+import { Logger } from "../../../src/types.js";
 
 // src/utils/ConsoleLogger.ts
 export class ConsoleLogger implements Logger {

@@ -1,7 +1,7 @@
 // src/jira_functions/oAuth2/JiraOAuth2Client.ts
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
-import { JiraOAuth2Config, JiraApiError, CreateIssueRequest, CreateIssueResponse, JiraIssue, JiraSearchResponse, IssueLinkRequest, JiraProject, JiraUser, Logger, JiraProjectSearchResponse, RefreshTokensResponse, GetIssuesOptions } from './types';
-import { silentLogger } from './util/logger';
+import { JiraOAuth2Config, JiraApiError, CreateIssueRequest, CreateIssueResponse, JiraIssue, JiraSearchResponse, IssueLinkRequest, JiraProject, JiraUser, Logger, JiraProjectSearchResponse, RefreshTokensResponse, GetIssuesOptions } from './types.js';
+import { silentLogger } from './util/logger.js';
 
 // ========= JIRA CLIENT CLASS =========
 

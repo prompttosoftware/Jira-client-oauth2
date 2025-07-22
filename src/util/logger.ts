@@ -1,6 +1,6 @@
 // src/utils/logger.ts
 
-import { Logger } from "../types";
+import { Logger } from "../types.js";
 
 /**
  * A logger that does nothing. This is the default logger for the client,
