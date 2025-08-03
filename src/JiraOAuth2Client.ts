@@ -108,6 +108,35 @@ export default class JiraOAuth2Client {
   ): Promise<T> {
     try {
       const response: AxiosResponse<T> = await client.request({ method, url: endpoint, data, ...config });
+      
+      // Throw if non-2xx response (just in case axios doesn’t already)
+      if (response.status < 200 || response.status >= 300) {
+        throw new JiraApiError(
+          `Jira API returned status ${response.status}`,
+          response.status,
+          response.statusText,
+          response.data,
+        );
+      }
+
+      // Additional Jira-specific check for "not authenticated" in successful responses
+      if (
+        typeof response.data === 'object' &&
+        response.data &&
+        'errorMessages' in response.data &&
+        Array.isArray(response.data.errorMessages) &&
+        response.data.errorMessages.some((msg: string) =>
+          msg.toLowerCase().includes('not authenticated')
+        )
+      ) {
+        throw new JiraApiError(
+          'Jira API says: not authenticated (despite 2xx status)',
+          401,
+          response.statusText,
+          response.data
+        );
+      }
+      
       return response.data;
     } catch (error: any) {
       const errorMessage =
