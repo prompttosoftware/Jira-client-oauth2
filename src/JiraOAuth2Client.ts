@@ -288,7 +288,27 @@ export default class JiraOAuth2Client {
     }
     if (comment) {
       data.update = {
-        comment: [{ add: { body: comment } }],
+        comment: [
+          {
+            add: {
+              body: {
+                type: 'doc',
+                version: 1,
+                content: [
+                  {
+                    type: 'paragraph',
+                    content: [
+                      {
+                        type: 'text',
+                        text: comment,
+                      },
+                    ],
+                  },
+                ],
+              },
+            },
+          },
+        ],
       };
     }
     return this.makeRequest<void>(this.jiraClient, 'POST', `/issue/${issueKey}/transitions`, data);
