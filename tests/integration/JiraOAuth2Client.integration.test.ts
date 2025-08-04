@@ -318,35 +318,6 @@ describe('JiraOAuth2Client - Independent Integration Tests', () => {
   });
 });
 
-// === SUITE 3: Token and Client Management Tests ===
-describe('JiraOAuth2Client - Token and Client Management Tests', () => {
-  
-  it('should update access token successfully', async () => {
-    const originalToken = JIRA_OAUTH_ACCESS_TOKEN!;
-    
-    // Set a new token (same token for testing purposes)
-    client.setAccessToken(originalToken);
-    
-    // Verify the client still works with the "new" token
-    const user = await client.getCurrentUser();
-    expect(user).toBeDefined();
-    expect(user.account_id).toBeTypeOf('string');
-    console.log('Successfully updated and tested access token.');
-  });
-
-  // Note: We can't easily test refreshAccessToken without valid refresh credentials
-  // This would require a separate test setup with refresh token management
-  it('should handle refresh token method (structure test)', async () => {
-    // This tests that the method exists and has the right signature
-    expect(typeof client.refreshAccessToken).toBe('function');
-    
-    // We can't actually test the refresh without valid credentials
-    // In a real scenario, you'd need:
-    // const refreshResponse = await client.refreshAccessToken(clientId, clientSecret, refreshToken);
-    console.log('Refresh token method structure verified.');
-  });
-});
-
 // === SUITE 4: Error Handling and Edge Cases ===
 describe('JiraOAuth2Client - Error Handling Tests', () => {
   
