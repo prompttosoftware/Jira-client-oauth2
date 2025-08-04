@@ -68,11 +68,25 @@ export default class JiraOAuth2Client {
    * Useful for handling OAuth2 token refreshes.
    */
   public setAccessToken(newAccessToken: string): void {
-    const authHeader = `Bearer ${newAccessToken}`;
-    this.jiraClient.defaults.headers.common['Authorization'] = authHeader;
-    this.agileClient.defaults.headers.common['Authorization'] = authHeader;
-    this.atlassianClient.defaults.headers.common['Authorization'] = authHeader;
-    this.logger.info('Jira client access token has been updated.');
+      const authHeader = `Bearer ${newAccessToken}`;
+      
+      // Method 1: Update defaults.headers directly (more reliable)
+      this.jiraClient.defaults.headers['Authorization'] = authHeader;
+      this.agileClient.defaults.headers['Authorization'] = authHeader;
+      this.atlassianClient.defaults.headers['Authorization'] = authHeader;
+      
+      // Method 2: Also update common headers as backup
+      if (this.jiraClient.defaults.headers.common) {
+          this.jiraClient.defaults.headers.common['Authorization'] = authHeader;
+      }
+      if (this.agileClient.defaults.headers.common) {
+          this.agileClient.defaults.headers.common['Authorization'] = authHeader;
+      }
+      if (this.atlassianClient.defaults.headers.common) {
+          this.atlassianClient.defaults.headers.common['Authorization'] = authHeader;
+      }
+      
+      this.logger.info('Jira client access token has been updated.');
   }
 
   /** 
